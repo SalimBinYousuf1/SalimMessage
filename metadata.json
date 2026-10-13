@@ -1,0 +1,6 @@
+{
+  "name": "Salim",
+  "description": "Native Android SMS and MMS app with zero tracking, modern design, dual-SIM support, and fast on-device search.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
