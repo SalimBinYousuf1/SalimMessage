@@ -66,7 +66,9 @@ import com.example.core.util.PhoneNumberHelper
 import com.example.ui.components.ComposerBarView
 import com.example.ui.components.ConversationTopBar
 import com.example.ui.components.DateHeaderChip
+import com.example.ui.components.EmojiPickerPanel
 import com.example.ui.components.MessageBubbleView
+import com.example.ui.components.ScheduleSendBottomSheet
 import com.example.ui.theme.CardWhite
 import com.example.ui.theme.ChatBackground
 import com.example.ui.theme.InkBlack
@@ -87,7 +89,7 @@ fun ConversationScreen(
     onRetryMessage: (Message) -> Unit,
     onDeleteMessage: (Long) -> Unit,
     onStarMessage: (Long, Boolean) -> Unit,
-    onScheduleClick: () -> Unit,
+    onScheduleMessage: (String, String, Long) -> Unit,
     modifier: Modifier = Modifier
 ) {
     val context = LocalContext.current
@@ -98,6 +100,8 @@ fun ConversationScreen(
     var selectedSimId by remember { mutableStateOf(if (activeSims.isNotEmpty()) activeSims.first().subscriptionId else -1) }
     var selectedMessageForAction by remember { mutableStateOf<Message?>(null) }
     var showAttachmentSheet by remember { mutableStateOf(false) }
+    var showEmojiPicker by remember { mutableStateOf(false) }
+    var showScheduleSendSheet by remember { mutableStateOf(false) }
 
     // Photo picker
     val photoPickerLauncher = rememberLauncherForActivityResult(
@@ -109,7 +113,11 @@ fun ConversationScreen(
     }
 
     BackHandler {
-        onBackClick()
+        if (showEmojiPicker) {
+            showEmojiPicker = false
+        } else {
+            onBackClick()
+        }
     }
 
     // Scroll to bottom when messages list size changes
@@ -151,31 +159,47 @@ fun ConversationScreen(
             )
         },
         bottomBar = {
-            ComposerBarView(
-                text = textInput,
-                onTextChange = { textInput = it },
-                onSendClick = {
-                    if (textInput.isNotBlank()) {
-                        onSendMessage(textInput.trim(), selectedSimId, null)
-                        textInput = ""
-                    }
-                },
-                onAttachClick = { showAttachmentSheet = true },
-                onCameraClick = {
-                    photoPickerLauncher.launch(
-                        PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly)
+            Column {
+                ComposerBarView(
+                    text = textInput,
+                    onTextChange = { textInput = it },
+                    onSendClick = {
+                        if (textInput.isNotBlank()) {
+                            onSendMessage(textInput.trim(), selectedSimId, null)
+                            textInput = ""
+                            showEmojiPicker = false
+                        }
+                    },
+                    onAttachClick = { showAttachmentSheet = true },
+                    onCameraClick = {
+                        photoPickerLauncher.launch(
+                            PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly)
+                        )
+                    },
+                    onMicClick = {
+                        Toast.makeText(context, context.getString(R.string.recording), Toast.LENGTH_SHORT).show()
+                    },
+                    onEmojiClick = {
+                        showEmojiPicker = !showEmojiPicker
+                    },
+                    activeSims = activeSims,
+                    selectedSimId = selectedSimId,
+                    onSimSelect = { selectedSimId = it }
+                )
+
+                if (showEmojiPicker) {
+                    EmojiPickerPanel(
+                        onEmojiSelected = { emoji ->
+                            textInput += emoji
+                        },
+                        onBackspace = {
+                            if (textInput.isNotEmpty()) {
+                                textInput = textInput.dropLast(1)
+                            }
+                        }
                     )
-                },
-                onMicClick = {
-                    Toast.makeText(context, context.getString(R.string.recording), Toast.LENGTH_SHORT).show()
-                },
-                onEmojiClick = {
-                    textInput += "😊"
-                },
-                activeSims = activeSims,
-                selectedSimId = selectedSimId,
-                onSimSelect = { selectedSimId = it }
-            )
+                }
+            }
         }
     ) { innerPadding ->
         LazyColumn(
@@ -266,11 +290,24 @@ fun ConversationScreen(
                     title = stringResource(R.string.schedule_send),
                     onClick = {
                         showAttachmentSheet = false
-                        onScheduleClick()
+                        showScheduleSendSheet = true
                     }
                 )
             }
         }
+    }
+
+    if (showScheduleSendSheet) {
+        ScheduleSendBottomSheet(
+            prefilledRecipient = conversation.address,
+            prefilledText = textInput,
+            onSchedule = { recipient, body, time ->
+                onScheduleMessage(recipient, body, time)
+                textInput = ""
+                showScheduleSendSheet = false
+            },
+            onDismiss = { showScheduleSendSheet = false }
+        )
     }
 
     // Message Action Sheet (long-press)

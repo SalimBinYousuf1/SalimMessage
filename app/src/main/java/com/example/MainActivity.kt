@@ -30,6 +30,7 @@ import com.example.ui.screens.ConversationListScreen
 import com.example.ui.screens.ConversationScreen
 import com.example.ui.screens.FavoritesScreen
 import com.example.ui.screens.NewMessageScreen
+import com.example.ui.screens.ScheduledMessagesScreen
 import com.example.ui.screens.SettingsScreen
 import com.example.ui.screens.SpamBlockedScreen
 import com.example.ui.theme.SalimTheme
@@ -199,7 +200,7 @@ fun SalimAppNavigation(
                     onRetryMessage = { viewModel.retryMessage(it) },
                     onDeleteMessage = { viewModel.deleteMessage(it) },
                     onStarMessage = { id, star -> viewModel.starMessage(id, star) },
-                    onScheduleClick = { /* Schedule dialog */ }
+                    onScheduleMessage = { recip, body, time -> viewModel.scheduleMessage(recip, body, time) }
                 )
             } else {
                 viewModel.navigateBack()
@@ -284,6 +285,16 @@ fun SalimAppNavigation(
             } else {
                 viewModel.navigateBack()
             }
+        }
+
+        ScreenState.SCHEDULED -> {
+            val scheduledMessages by viewModel.scheduledMessages.collectAsState()
+            ScheduledMessagesScreen(
+                scheduledMessages = scheduledMessages,
+                onDeleteScheduled = { viewModel.deleteScheduledMessage(it) },
+                onScheduleNew = { recip, body, time -> viewModel.scheduleMessage(recip, body, time) },
+                onBackClick = { viewModel.navigateBack() }
+            )
         }
     }
 }

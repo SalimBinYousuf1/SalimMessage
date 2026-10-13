@@ -26,7 +26,8 @@ enum class ScreenState {
     FAVOURITES,
     ARCHIVE,
     SPAM_BLOCKED,
-    CONTACT_INFO
+    CONTACT_INFO,
+    SCHEDULED
 }
 
 class MainViewModel(application: Application) : AndroidViewModel(application) {
@@ -74,15 +75,21 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         refreshStatus()
     }
 
+    private var messagesCollectionJob: kotlinx.coroutines.Job? = null
+
     fun refreshStatus() {
         isDefaultSmsApp.value = repository.isDefaultSmsApp()
         activeSims.value = repository.getActiveSimCards()
     }
 
+    val scheduledMessages: StateFlow<List<com.example.core.model.ScheduledMessage>> = repository.scheduledMessagesFlow
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
+
     fun openConversation(conversation: Conversation) {
         activeConversation.value = conversation
         currentScreen.value = ScreenState.CONVERSATION
-        viewModelScope.launch {
+        messagesCollectionJob?.cancel()
+        messagesCollectionJob = viewModelScope.launch {
             repository.markThreadAsRead(conversation.threadId)
             repository.getMessagesForThread(conversation.threadId).collect {
                 activeMessages.value = it
@@ -102,13 +109,17 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         currentScreen.value = ScreenState.SPAM_BLOCKED
     }
 
+    fun openScheduledMessages() {
+        currentScreen.value = ScreenState.SCHEDULED
+    }
+
     fun navigateBottom(destination: BottomBarDestination) {
         currentBottomDestination.value = destination
         when (destination) {
             BottomBarDestination.MESSAGE -> currentScreen.value = ScreenState.CONVERSATION_LIST
-            BottomBarDestination.ARCHIVE -> currentScreen.value = ScreenState.ARCHIVE
-            BottomBarDestination.FAVOURITE -> currentScreen.value = ScreenState.FAVOURITES
+            BottomBarDestination.SCHEDULED -> currentScreen.value = ScreenState.SCHEDULED
             BottomBarDestination.CONTACTS -> currentScreen.value = ScreenState.NEW_MESSAGE
+            BottomBarDestination.FAVOURITE -> currentScreen.value = ScreenState.FAVOURITES
             BottomBarDestination.SETTINGS -> currentScreen.value = ScreenState.SETTINGS
         }
     }
@@ -138,8 +149,21 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                 recipient = conv.address,
                 body = body,
                 subId = subId,
-                attachmentUri = attachmentUri
+                attachmentUri = attachmentUri,
+                targetThreadId = conv.threadId
             )
+        }
+    }
+
+    fun scheduleMessage(recipient: String, body: String, scheduledTime: Long, subId: Int = -1) {
+        viewModelScope.launch {
+            repository.scheduleMessage(recipient, body, scheduledTime, subId)
+        }
+    }
+
+    fun deleteScheduledMessage(id: Long) {
+        viewModelScope.launch {
+            repository.deleteScheduledMessage(id)
         }
     }
 
@@ -228,7 +252,10 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     }
 
     fun selectOrCreateConversation(address: String, name: String?) {
-        val existing = conversations.value.find { it.address == address }
+        val norm = com.example.core.util.PhoneNumberHelper.normalize(address)
+        val existing = conversations.value.find { 
+            it.address == address || (norm.isNotBlank() && com.example.core.util.PhoneNumberHelper.normalize(it.address) == norm)
+        }
         if (existing != null) {
             openConversation(existing)
         } else {

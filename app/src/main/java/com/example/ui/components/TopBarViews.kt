@@ -33,8 +33,6 @@ import com.example.ui.theme.UrbanistFontFamily
 @Composable
 fun MessagesTopBar(
     onBackClick: () -> Unit,
-    onCameraClick: () -> Unit,
-    onComposeClick: () -> Unit,
     modifier: Modifier = Modifier
 ) {
     Row(
@@ -42,43 +40,22 @@ fun MessagesTopBar(
             .fillMaxWidth()
             .statusBarsPadding()
             .padding(horizontal = 20.dp, vertical = 12.dp),
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.SpaceBetween
+        verticalAlignment = Alignment.CenterVertically
     ) {
-        Row(verticalAlignment = Alignment.CenterVertically) {
-            CircularIconButton(
-                icon = Icons.Outlined.ChevronLeft,
-                contentDescription = "Back",
-                onClick = onBackClick,
-                testTag = "messages_back_button"
-            )
-            Spacer(modifier = Modifier.width(16.dp))
-            Text(
-                text = stringResource(R.string.title_messages),
-                fontFamily = UrbanistFontFamily,
-                fontWeight = FontWeight.Bold,
-                fontSize = 24.sp,
-                color = InkBlack
-            )
-        }
-
-        Row(
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(10.dp)
-        ) {
-            CircularIconButton(
-                icon = Icons.Outlined.CameraAlt,
-                contentDescription = stringResource(R.string.camera),
-                onClick = onCameraClick,
-                testTag = "messages_camera_button"
-            )
-            CircularIconButton(
-                icon = Icons.Outlined.Edit,
-                contentDescription = stringResource(R.string.new_message),
-                onClick = onComposeClick,
-                testTag = "messages_compose_button"
-            )
-        }
+        CircularIconButton(
+            icon = Icons.Outlined.ChevronLeft,
+            contentDescription = "Back",
+            onClick = onBackClick,
+            testTag = "messages_back_button"
+        )
+        Spacer(modifier = Modifier.width(16.dp))
+        Text(
+            text = stringResource(R.string.title_messages),
+            fontFamily = UrbanistFontFamily,
+            fontWeight = FontWeight.Bold,
+            fontSize = 24.sp,
+            color = InkBlack
+        )
     }
 }
 

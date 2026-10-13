@@ -58,6 +58,7 @@ import com.example.ui.components.CircularIconButton
 import com.example.ui.components.ConversationFilterOptions
 import com.example.ui.components.ConversationRow
 import com.example.ui.components.FilterBottomSheet
+import com.example.ui.components.GoogleComposeFab
 import com.example.ui.components.MessagesTopBar
 import com.example.ui.components.SalimBottomBar
 import com.example.ui.components.SearchBarView
@@ -122,6 +123,14 @@ fun ConversationListScreen(
     Scaffold(
         modifier = modifier.fillMaxSize(),
         containerColor = ScreenBackground,
+        floatingActionButton = {
+            if (!isSelectionMode) {
+                GoogleComposeFab(
+                    onClick = onComposeClick,
+                    modifier = Modifier.padding(bottom = 16.dp, end = 4.dp)
+                )
+            }
+        },
         bottomBar = {
             if (!isSelectionMode) {
                 SalimBottomBar(
@@ -160,9 +169,7 @@ fun ConversationListScreen(
                 )
             } else {
                 MessagesTopBar(
-                    onBackClick = { /* At root, system handles */ },
-                    onCameraClick = onCameraClick,
-                    onComposeClick = onComposeClick
+                    onBackClick = { /* At root, system handles */ }
                 )
             }
 

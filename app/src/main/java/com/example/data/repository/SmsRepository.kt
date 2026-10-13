@@ -1,6 +1,7 @@
 package com.example.data.repository
 
 import android.content.Context
+import android.content.Intent
 import com.example.core.model.BlockedNumber
 import com.example.core.model.Contact
 import com.example.core.model.Conversation
@@ -144,11 +145,16 @@ class SmsRepository(
         recipient: String,
         body: String,
         subId: Int = -1,
-        attachmentUri: String? = null
+        attachmentUri: String? = null,
+        targetThreadId: Long? = null
     ): Long = withContext(Dispatchers.IO) {
         val normalized = PhoneNumberHelper.normalize(recipient)
-        var conv = conversationDao.getConversationByAddress(recipient)
-        val threadId = conv?.threadId ?: System.currentTimeMillis()
+        var conv = if (targetThreadId != null) {
+            conversationDao.getConversationByThreadId(targetThreadId)
+        } else {
+            conversationDao.getConversationByAddress(recipient)
+        }
+        val threadId = targetThreadId ?: conv?.threadId ?: System.currentTimeMillis()
 
         val contact = contactDao.findContactByNumber(recipient, normalized)
         val msgType = if (attachmentUri != null) MessageType.IMAGE else MessageType.SMS
@@ -311,8 +317,8 @@ class SmsRepository(
         conversationDao.setDraft(threadId, draft)
     }
 
-    suspend fun scheduleMessage(recipient: String, body: String, scheduledTime: Long, subId: Int): Long = withContext(Dispatchers.IO) {
-        scheduledMessageDao.insert(
+    suspend fun scheduleMessage(recipient: String, body: String, scheduledTime: Long, subId: Int = -1): Long = withContext(Dispatchers.IO) {
+        val id = scheduledMessageDao.insert(
             ScheduledMessageEntity(
                 recipient = recipient,
                 body = body,
@@ -320,6 +326,60 @@ class SmsRepository(
                 subscriptionId = subId
             )
         )
+        try {
+            val alarmManager = context.getSystemService(Context.ALARM_SERVICE) as? android.app.AlarmManager
+            if (alarmManager != null) {
+                val intent = Intent(context, com.example.receiver.ScheduledMessageReceiver::class.java).apply {
+                    putExtra("scheduled_id", id)
+                }
+                val pendingIntent = android.app.PendingIntent.getBroadcast(
+                    context,
+                    id.toInt(),
+                    intent,
+                    android.app.PendingIntent.FLAG_UPDATE_CURRENT or android.app.PendingIntent.FLAG_IMMUTABLE
+                )
+                if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.M) {
+                    alarmManager.setExactAndAllowWhileIdle(
+                        android.app.AlarmManager.RTC_WAKEUP,
+                        scheduledTime,
+                        pendingIntent
+                    )
+                } else {
+                    alarmManager.setExact(
+                        android.app.AlarmManager.RTC_WAKEUP,
+                        scheduledTime,
+                        pendingIntent
+                    )
+                }
+            }
+        } catch (_: Exception) {}
+        id
+    }
+
+    suspend fun deleteScheduledMessage(id: Long) = withContext(Dispatchers.IO) {
+        try {
+            val alarmManager = context.getSystemService(Context.ALARM_SERVICE) as? android.app.AlarmManager
+            val intent = Intent(context, com.example.receiver.ScheduledMessageReceiver::class.java)
+            val pendingIntent = android.app.PendingIntent.getBroadcast(
+                context,
+                id.toInt(),
+                intent,
+                android.app.PendingIntent.FLAG_UPDATE_CURRENT or android.app.PendingIntent.FLAG_IMMUTABLE
+            )
+            alarmManager?.cancel(pendingIntent)
+        } catch (_: Exception) {}
+        scheduledMessageDao.delete(id)
+    }
+
+    suspend fun getConversationByAddressOrPhone(address: String): Conversation? = withContext(Dispatchers.IO) {
+        val exact = conversationDao.getConversationByAddress(address)
+        if (exact != null) return@withContext exact.toDomain()
+        val normalized = PhoneNumberHelper.normalize(address)
+        if (normalized.isNotBlank()) {
+            val list = conversationDao.getActiveConversations()
+            // Check matching normalized
+        }
+        null
     }
 
     suspend fun deleteMessage(id: Long) = withContext(Dispatchers.IO) {

@@ -42,15 +42,18 @@ import com.example.ui.theme.InkBlack
 import com.example.ui.theme.TextSecondary
 import com.example.ui.theme.UrbanistFontFamily
 
+import androidx.compose.material.icons.outlined.AccessTime
+import androidx.compose.material.icons.filled.AccessTime
+
 enum class BottomBarDestination(
     val titleRes: Int,
     val outlinedIcon: ImageVector,
     val filledIcon: ImageVector
 ) {
-    CONTACTS(R.string.nav_contacts, Icons.Outlined.Contacts, Icons.Outlined.Contacts),
-    ARCHIVE(R.string.nav_archive, Icons.Outlined.Archive, Icons.Outlined.Archive),
-    FAVOURITE(R.string.nav_favourite, Icons.Outlined.FavoriteBorder, Icons.Outlined.FavoriteBorder),
     MESSAGE(R.string.nav_message, Icons.Outlined.ChatBubbleOutline, Icons.Default.ChatBubble),
+    SCHEDULED(R.string.nav_scheduled, Icons.Outlined.AccessTime, Icons.Filled.AccessTime),
+    CONTACTS(R.string.nav_contacts, Icons.Outlined.Contacts, Icons.Outlined.Contacts),
+    FAVOURITE(R.string.nav_favourite, Icons.Outlined.FavoriteBorder, Icons.Outlined.FavoriteBorder),
     SETTINGS(R.string.nav_settings, Icons.Outlined.Settings, Icons.Outlined.Settings)
 }
 
